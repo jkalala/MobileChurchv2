@@ -7,6 +7,8 @@ import { AuthProvider } from "@/components/auth-provider"
 import { Toaster } from "@/components/ui/toaster"
 import HelpWidget from "./components/help-widget"
 import OnboardingTooltips from "./components/onboarding-tooltips"
+import { useFeature } from "@/lib/feature-management"
+import OfflineIndicator from "@/app/components/offline-indicator"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,8 +26,18 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const isPWAEnabled = typeof window !== 'undefined' ? useFeature('mobile_pwa') : false;
+
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {isPWAEnabled && (
+          <>
+            <link rel="manifest" href="/manifest.json" />
+            <script dangerouslySetInnerHTML={{ __html: `if ('serviceWorker' in navigator) { window.addEventListener('load', function() { navigator.serviceWorker.register('/sw.js'); }); }` }} />
+          </>
+        )}
+      </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
@@ -33,6 +45,7 @@ export default function RootLayout({
             <Toaster />
             <HelpWidget />
             <OnboardingTooltips />
+            {isPWAEnabled && <OfflineIndicator />}
           </AuthProvider>
         </ThemeProvider>
       </body>

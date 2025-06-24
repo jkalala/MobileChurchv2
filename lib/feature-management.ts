@@ -128,6 +128,13 @@ export const DEFAULT_FEATURES: Feature[] = [
     beta: true,
     dependencies: ["member-management"],
   },
+  {
+    id: "mobile_pwa",
+    name: "Mobile PWA",
+    description: "Enable Progressive Web App features for mobile users (install, offline, sync, etc.)",
+    enabled: false,
+    category: "advanced",
+  },
 ]
 
 // Feature management functions

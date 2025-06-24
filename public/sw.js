@@ -139,6 +139,10 @@ self.addEventListener("sync", (event) => {
   if (event.tag === "sync-member-updates") {
     event.waitUntil(syncMemberUpdates())
   }
+
+  if (event.tag === "sync-event-updates") {
+    event.waitUntil(syncEventUpdates())
+  }
 })
 
 // Sync attendance data when back online
@@ -203,6 +207,38 @@ async function syncMemberUpdates() {
   }
 }
 
+// Add syncEventUpdates function
+async function syncEventUpdates() {
+  try {
+    const db = await openDB()
+    const transaction = db.transaction(["pendingEventUpdates"], "readonly")
+    const store = transaction.objectStore("pendingEventUpdates")
+    const pendingUpdates = await store.getAll()
+
+    for (const update of pendingUpdates) {
+      try {
+        let url = "/api/events"
+        if (update.eventId) url += `/${update.eventId}`
+        const response = await fetch(url, {
+          method: update.method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(update.data),
+        })
+        if (response.ok) {
+          // Remove from pending queue
+          const deleteTransaction = db.transaction(["pendingEventUpdates"], "readwrite")
+          const deleteStore = deleteTransaction.objectStore("pendingEventUpdates")
+          await deleteStore.delete(update.id)
+        }
+      } catch (error) {
+        console.error("Failed to sync event update:", error)
+      }
+    }
+  } catch (error) {
+    console.error("Error syncing event updates:", error)
+  }
+}
+
 // Helper function to open IndexedDB
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -229,6 +265,10 @@ function openDB() {
 
       if (!db.objectStoreNames.contains("pendingMemberUpdates")) {
         db.createObjectStore("pendingMemberUpdates", { keyPath: "id", autoIncrement: true })
+      }
+
+      if (!db.objectStoreNames.contains("pendingEventUpdates")) {
+        db.createObjectStore("pendingEventUpdates", { keyPath: "id", autoIncrement: true })
       }
     }
   })

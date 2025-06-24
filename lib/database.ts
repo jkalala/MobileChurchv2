@@ -1,5 +1,6 @@
 import { createClientComponentClient } from "./supabase-client"
 import type { Database } from "./database-types"
+import { offlineStorage } from "@/lib/offline-storage"
 
 /* ------------------------------------------------------------------ */
 /*  🔵 Domain types (kept in-file so callers can `import type` easily) */
@@ -166,6 +167,15 @@ class DatabaseService {
   }
 
   static async createMember(memberData: Partial<Member>): Promise<Member> {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // Offline: queue for sync
+      await offlineStorage.addPendingMemberUpdate(memberData, "POST")
+      // Optionally add to local cache immediately
+      const localMembers = await offlineStorage.getMembers()
+      const newMember = { ...memberData, id: `offline-${Date.now()}` }
+      await offlineStorage.saveMembers([newMember, ...localMembers])
+      return newMember as Member
+    }
     const { data, error } = await this.supabase
       .from("members")
       .insert({
@@ -175,12 +185,23 @@ class DatabaseService {
       })
       .select()
       .single()
-
     if (error) throw error
+    // Update IndexedDB
+    const localMembers = await offlineStorage.getMembers()
+    await offlineStorage.saveMembers([data, ...localMembers])
     return data
   }
 
   static async updateMember(id: string, memberData: Partial<Member>): Promise<Member> {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // Offline: queue for sync
+      await offlineStorage.addPendingMemberUpdate(memberData, "PUT", id)
+      // Update local cache
+      const localMembers = await offlineStorage.getMembers()
+      const updatedMembers = localMembers.map(m => m.id === id ? { ...m, ...memberData } : m)
+      await offlineStorage.saveMembers(updatedMembers)
+      return updatedMembers.find(m => m.id === id) as Member
+    }
     const { data, error } = await this.supabase
       .from("members")
       .update({
@@ -190,14 +211,30 @@ class DatabaseService {
       .eq("id", id)
       .select()
       .single()
-
     if (error) throw error
+    // Update IndexedDB
+    const localMembers = await offlineStorage.getMembers()
+    const updatedMembers = localMembers.map(m => m.id === id ? data : m)
+    await offlineStorage.saveMembers(updatedMembers)
     return data
   }
 
   static async deleteMember(id: string): Promise<void> {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // Offline: queue for sync
+      await offlineStorage.addPendingMemberUpdate({ id }, "DELETE", id)
+      // Update local cache
+      const localMembers = await offlineStorage.getMembers()
+      const updatedMembers = localMembers.filter(m => m.id !== id)
+      await offlineStorage.saveMembers(updatedMembers)
+      return
+    }
     const { error } = await this.supabase.from("members").delete().eq("id", id)
     if (error) throw error
+    // Update IndexedDB
+    const localMembers = await offlineStorage.getMembers()
+    const updatedMembers = localMembers.filter(m => m.id !== id)
+    await offlineStorage.saveMembers(updatedMembers)
   }
 
   static async bulkUpdateMembers(memberIds: string[], updates: Record<string, any>): Promise<void> {
@@ -219,6 +256,17 @@ class DatabaseService {
   }
 
   static async createEvent(eventData: Partial<Event>): Promise<Event> {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // Offline: queue for sync
+      if (offlineStorage.addPendingEventUpdate) {
+        await offlineStorage.addPendingEventUpdate(eventData, "POST")
+      }
+      // Add to local cache
+      const localEvents = await offlineStorage.getEvents()
+      const newEvent = { ...eventData, id: `offline-${Date.now()}` }
+      await offlineStorage.saveEvents([newEvent, ...localEvents])
+      return newEvent as Event
+    }
     const { data, error } = await this.supabase
       .from("events")
       .insert({
@@ -228,12 +276,25 @@ class DatabaseService {
       })
       .select()
       .single()
-
     if (error) throw error
+    // Update IndexedDB
+    const localEvents = await offlineStorage.getEvents()
+    await offlineStorage.saveEvents([data, ...localEvents])
     return data
   }
 
   static async updateEvent(id: string, eventData: Partial<Event>): Promise<Event> {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // Offline: queue for sync
+      if (offlineStorage.addPendingEventUpdate) {
+        await offlineStorage.addPendingEventUpdate(eventData, "PUT", id)
+      }
+      // Update local cache
+      const localEvents = await offlineStorage.getEvents()
+      const updatedEvents = localEvents.map(e => e.id === id ? { ...e, ...eventData } : e)
+      await offlineStorage.saveEvents(updatedEvents)
+      return updatedEvents.find(e => e.id === id) as Event
+    }
     const { data, error } = await this.supabase
       .from("events")
       .update({
@@ -243,14 +304,32 @@ class DatabaseService {
       .eq("id", id)
       .select()
       .single()
-
     if (error) throw error
+    // Update IndexedDB
+    const localEvents = await offlineStorage.getEvents()
+    const updatedEvents = localEvents.map(e => e.id === id ? data : e)
+    await offlineStorage.saveEvents(updatedEvents)
     return data
   }
 
   static async deleteEvent(id: string): Promise<void> {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // Offline: queue for sync
+      if (offlineStorage.addPendingEventUpdate) {
+        await offlineStorage.addPendingEventUpdate({ id }, "DELETE", id)
+      }
+      // Update local cache
+      const localEvents = await offlineStorage.getEvents()
+      const updatedEvents = localEvents.filter(e => e.id !== id)
+      await offlineStorage.saveEvents(updatedEvents)
+      return
+    }
     const { error } = await this.supabase.from("events").delete().eq("id", id)
     if (error) throw error
+    // Update IndexedDB
+    const localEvents = await offlineStorage.getEvents()
+    const updatedEvents = localEvents.filter(e => e.id !== id)
+    await offlineStorage.saveEvents(updatedEvents)
   }
 
   /* ---------- FINANCIAL ---------- */
@@ -407,6 +486,12 @@ class DatabaseService {
   }
 
   static async recordAttendance(attendanceData: any): Promise<any> {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // Offline: queue for sync
+      await offlineStorage.addPendingAttendance(attendanceData)
+      // Optionally add to local cache (not shown in UI, but could be added)
+      return { ...attendanceData, id: `offline-${Date.now()}` }
+    }
     const { data, error } = await this.supabase
       .from("attendance")
       .insert({
@@ -429,9 +514,18 @@ class DatabaseService {
   }
 
   static async getAttendanceRecords(): Promise<any[]> {
-    const { data, error } = await this.supabase.from("attendance").select("*")
-    if (error) throw error
-    return data || []
+    try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        // Offline: load from IndexedDB (not implemented, but could be added)
+        return []
+      }
+      const { data, error } = await this.supabase.from("attendance").select("*")
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error("Error fetching attendance records:", error)
+      return []
+    }
   }
 
   static async getDepartments(): Promise<any[]> {

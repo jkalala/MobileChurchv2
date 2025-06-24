@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -49,6 +49,13 @@ import { useAuth } from "@/components/auth-provider"
 import { bulkUpdateMemberStatus, bulkAssignDepartment, bulkDeleteMembersClient } from "@/lib/actions"
 import { toast } from "@/components/ui/use-toast"
 import { DepartmentSelectModal } from "./department-select-modal"
+import MemberFilters from "./member-filters"
+// @ts-ignore: papaparse types may not be available
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import Papa from "papaparse"
+// @ts-ignore: xlsx types may not be available
+import * as XLSX from "xlsx"
 
 type ViewMode = "cards" | "table" | "grid" | "list" | "compact" | "contact"
 type SortField = "name" | "email" | "joinDate" | "department" | "status"
@@ -80,6 +87,8 @@ export default function MemberManagement({ language = "pt" }: MemberManagementPr
   const [showGPSCheckIn, setShowGPSCheckIn] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [showDeptModal, setShowDeptModal] = useState(false)
+  const [filters, setFilters] = useState<any>({})
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // Load members on component mount
   useEffect(() => {
@@ -107,19 +116,24 @@ export default function MemberManagement({ language = "pt" }: MemberManagementPr
     let filtered = members
 
     // Apply search filter
-    if (searchTerm) {
+    if (filters.search) {
       filtered = filtered.filter(
         (member) =>
-          member.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          member.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          member.phone?.includes(searchTerm),
+          member.first_name.toLowerCase().includes(filters.search.toLowerCase()) ||
+          member.last_name.toLowerCase().includes(filters.search.toLowerCase()) ||
+          member.email?.toLowerCase().includes(filters.search.toLowerCase()) ||
+          member.phone?.includes(filters.search),
       )
     }
 
     // Apply status filter
-    if (activeTab !== "all") {
-      filtered = filtered.filter((member) => member.member_status === activeTab)
+    if (filters.status && filters.status !== "all") {
+      filtered = filtered.filter((member) => member.member_status === filters.status)
+    }
+
+    // Apply department filter
+    if (filters.department && filters.department !== "all") {
+      filtered = filtered.filter((member) => member.department === filters.department)
     }
 
     // Apply sorting
@@ -187,6 +201,7 @@ export default function MemberManagement({ language = "pt" }: MemberManagementPr
   const stats = getMemberStats()
 
   const handleAddMember = (memberData: Partial<Member>) => {
+    toast({ title: "Add Member triggered" });
     // Ensure id is string if present
     if (memberData.id && typeof memberData.id === 'number') {
       memberData.id = String(memberData.id)
@@ -833,6 +848,87 @@ export default function MemberManagement({ language = "pt" }: MemberManagementPr
     toast({ title: "Members deleted." })
   }
 
+  // CSV Export
+  const handleExport = () => {
+    const csv = Papa.unparse(members)
+    const blob = new Blob([csv], { type: "text/csv" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "members.csv"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Excel Export
+  const handleExportExcel = () => {
+    try {
+      const ws = XLSX.utils.json_to_sheet(members)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Members")
+      XLSX.writeFile(wb, "members.xlsx")
+      toast({ title: "Exported to Excel!" })
+    } catch (err) {
+      toast({ title: "Failed to export Excel", description: String(err), variant: "destructive" })
+    }
+  }
+
+  // CSV Import
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const ext = file.name.split('.').pop()?.toLowerCase()
+    if (ext === "csv") {
+      Papa.parse(file, {
+        header: true,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        complete: async (results: any) => {
+          try {
+            const imported = results.data as Partial<Member>[]
+            if (!imported.length) throw new Error("No data found in CSV.")
+            for (const member of imported) {
+              await addMemberAsync(member)
+            }
+            loadMembers()
+            toast({ title: "CSV import successful!" })
+          } catch (err) {
+            toast({ title: "CSV import failed", description: String(err), variant: "destructive" })
+          }
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        error: (err: any) => {
+          toast({ title: "CSV parse error", description: String(err), variant: "destructive" })
+        },
+      })
+    } else if (ext === "xlsx" || ext === "xls") {
+      const reader = new FileReader()
+      reader.onload = async (evt) => {
+        try {
+          const data = evt.target?.result
+          if (!data) throw new Error("File read error.")
+          const workbook = XLSX.read(data, { type: "array" })
+          const sheetName = workbook.SheetNames[0]
+          const ws = workbook.Sheets[sheetName]
+          const imported = XLSX.utils.sheet_to_json(ws) as Partial<Member>[]
+          if (!imported.length) throw new Error("No data found in Excel file.")
+          for (const member of imported) {
+            await addMemberAsync(member)
+          }
+          loadMembers()
+          toast({ title: "Excel import successful!" })
+        } catch (err) {
+          toast({ title: "Excel import failed", description: String(err), variant: "destructive" })
+        }
+      }
+      reader.onerror = () => {
+        toast({ title: "Excel file read error", variant: "destructive" })
+      }
+      reader.readAsArrayBuffer(file)
+    } else {
+      toast({ title: "Unsupported file type", description: "Please upload a CSV or Excel file.", variant: "destructive" })
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -840,6 +936,8 @@ export default function MemberManagement({ language = "pt" }: MemberManagementPr
       </div>
     )
   }
+
+  console.log("showAddModal", showAddModal);
 
   return (
     <div className="p-6 space-y-6">
@@ -850,19 +948,35 @@ export default function MemberManagement({ language = "pt" }: MemberManagementPr
           <p className="text-gray-600">{t("members.description")}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            ref={fileInputRef}
+            style={{ display: "none" }}
+            onChange={handleImport}
+          />
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-4 w-4 mr-2" />
             {t("members.actions.import")}
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
-            {t("members.actions.export")}
+            {t("members.actions.export")} CSV
           </Button>
-          {userRole === "admin" && (
-            <Button onClick={() => setShowAddModal(true)} className="mb-4">
-              Add Member
-            </Button>
-          )}
+          <Button variant="outline" size="sm" onClick={handleExportExcel}>
+            <Download className="h-4 w-4 mr-2" />
+            {t("members.actions.export")} Excel
+          </Button>
+          <Button
+            onClick={() => {
+              toast({ title: "Button clicked" });
+              console.log("Add Member button clicked");
+              setShowAddModal(true);
+            }}
+            className="mb-4"
+          >
+            Add Member
+          </Button>
         </div>
       </div>
 
@@ -935,6 +1049,9 @@ export default function MemberManagement({ language = "pt" }: MemberManagementPr
           </CardContent>
         </Card>
       </div>
+
+      {/* Filters */}
+      <MemberFilters onFiltersChange={setFilters} />
 
       {/* Search and Controls */}
       <Card>

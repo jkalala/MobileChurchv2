@@ -16,7 +16,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Bell, Search, Settings, User, LogOut, ChevronDown, Wifi, WifiOff } from "lucide-react"
 import Image from "next/image"
-import { useAuth } from "@/app/components/auth-provider"
+import { useAuth } from "@/components/auth-provider"
 import { useTranslation } from "@/lib/i18n"
 import { toast } from "@/hooks/use-toast"
 import type { Language } from "@/lib/i18n"
@@ -30,7 +30,7 @@ interface MobileHeaderProps {
 export default function MobileHeader({ title, showBackButton = false, language }: MobileHeaderProps) {
   const router = useRouter()
   const { user, userProfile, signOut, language: currentLanguage, setLanguage } = useAuth()
-  const { t } = useTranslation(language || currentLanguage)
+  const { t } = useTranslation((language || currentLanguage) as Language)
   const [isOnline, setIsOnline] = useState(true)
 
   const handleLogout = async () => {
@@ -72,7 +72,7 @@ export default function MobileHeader({ title, showBackButton = false, language }
   }
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 md:hidden">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 md:hidden pt-safe pb-2">
       <div className="flex items-center justify-between px-4 py-3">
         {/* Left Section */}
         <div className="flex items-center gap-3">
@@ -94,7 +94,7 @@ export default function MobileHeader({ title, showBackButton = false, language }
         {/* Right Section */}
         <div className="flex items-center gap-2">
           {/* Language Selector */}
-          <Select value={currentLanguage} onValueChange={(value: Language) => setLanguage(value)}>
+          <Select value={currentLanguage} onValueChange={(value) => setLanguage(value as Language)}>
             <SelectTrigger className="w-16 h-8 text-xs border-0 bg-transparent">
               <SelectValue />
             </SelectTrigger>

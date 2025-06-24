@@ -32,6 +32,19 @@ export function useOffline() {
           pendingSyncCount: pendingSync.length,
           lastSyncTime: lastSync || null,
         }))
+
+        // Register sync for event updates if any are pending
+        if (typeof window !== "undefined" && "serviceWorker" in navigator && navigator.serviceWorker.ready) {
+          const hasPendingEventUpdates = pendingSync.some((item) => item.type === "event_update")
+          const registration = await navigator.serviceWorker.ready
+          if (hasPendingEventUpdates && registration && 'sync' in registration) {
+            try {
+              (registration.sync as any).register("sync-event-updates")
+            } catch (err) {
+              // Ignore if not supported
+            }
+          }
+        }
       } catch (error) {
         console.error("Failed to initialize offline storage:", error)
       }
@@ -40,9 +53,22 @@ export function useOffline() {
     initOfflineStorage()
 
     // Listen for online/offline events
-    const handleOnline = () => {
+    const handleOnline = async () => {
       setState((prev) => ({ ...prev, isOnline: true }))
       syncPendingData()
+      // Register sync for event updates if any are pending
+      if (typeof window !== "undefined" && "serviceWorker" in navigator && navigator.serviceWorker.ready) {
+        const pendingSync = await offlineStorage.getPendingSync()
+        const hasPendingEventUpdates = pendingSync.some((item) => item.type === "event_update")
+        const registration = await navigator.serviceWorker.ready
+        if (hasPendingEventUpdates && registration && 'sync' in registration) {
+          try {
+            (registration.sync as any).register("sync-event-updates")
+          } catch (err) {
+            // Ignore if not supported
+          }
+        }
+      }
     }
 
     const handleOffline = () => {

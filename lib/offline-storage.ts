@@ -60,6 +60,10 @@ class OfflineStorageService {
         if (!db.objectStoreNames.contains("appSettings")) {
           db.createObjectStore("appSettings", { keyPath: "key" })
         }
+
+        if (!db.objectStoreNames.contains("pendingEventUpdates")) {
+          db.createObjectStore("pendingEventUpdates", { keyPath: "id", autoIncrement: true })
+        }
       }
     })
   }
@@ -189,8 +193,18 @@ class OfflineStorageService {
     })
   }
 
+  async addPendingEventUpdate(updateData: any, method: "POST" | "PUT" | "DELETE", eventId?: string): Promise<void> {
+    const store = await this.getStore("pendingEventUpdates", "readwrite")
+    await store.add({
+      data: updateData,
+      method,
+      eventId,
+      timestamp: Date.now(),
+    })
+  }
+
   async getPendingSync(): Promise<PendingSync[]> {
-    const [attendance, memberUpdates] = await Promise.all([
+    const [attendance, memberUpdates, eventUpdates] = await Promise.all([
       this.getStore("pendingAttendance").then(
         (store) =>
           new Promise<any[]>((resolve, reject) => {
@@ -207,11 +221,20 @@ class OfflineStorageService {
             request.onerror = () => reject(request.error)
           }),
       ),
+      this.getStore("pendingEventUpdates").then(
+        (store) =>
+          new Promise<any[]>((resolve, reject) => {
+            const request = store.getAll()
+            request.onsuccess = () => resolve(request.result)
+            request.onerror = () => reject(request.error)
+          }),
+      ),
     ])
 
     return [
       ...attendance.map((item) => ({ ...item, type: "attendance" as const })),
       ...memberUpdates.map((item) => ({ ...item, type: "member_update" as const })),
+      ...eventUpdates.map((item) => ({ ...item, type: "event_update" as const })),
     ]
   }
 

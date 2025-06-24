@@ -3,8 +3,7 @@
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { AuthService, type UserProfile } from "@/lib/auth-service"
-
-export type Language = "pt" | "en" | "fr"
+import type { Language } from "@/lib/i18n"
 
 interface AuthContextType {
   user: any | null

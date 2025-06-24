@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Home, Users, Calendar, DollarSign, Menu, Plus } from "lucide-react"
 import { useTranslation } from "@/lib/i18n"
+import type { Language } from "@/lib/i18n"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import MobileNavigation from "./mobile-navigation"
 
@@ -16,7 +17,7 @@ interface MobileBottomNavProps {
 export default function MobileBottomNav({ language }: MobileBottomNavProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { t } = useTranslation(language || "pt")
+  const { t } = useTranslation((language || "pt") as Language)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const mainNavItems = [
@@ -64,8 +65,8 @@ export default function MobileBottomNav({ language }: MobileBottomNavProps) {
   return (
     <>
       {/* Mobile Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-50">
-        <div className="grid grid-cols-5 h-16">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-50 pb-safe">
+        <div className="grid grid-cols-5 h-16 min-w-0 overflow-x-auto">
           {mainNavItems.map((item) => (
             <Button
               key={item.id}
@@ -112,7 +113,7 @@ export default function MobileBottomNav({ language }: MobileBottomNavProps) {
       </div>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-20 right-4 md:hidden z-40">
+      <div className="fixed bottom-20 right-4 md:hidden z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <Button
           size="icon"
           className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"

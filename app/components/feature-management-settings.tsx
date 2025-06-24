@@ -102,9 +102,13 @@ export default function FeatureManagementSettings() {
   async function fetchFeatures() {
     setLoading(true)
     try {
-      const res = await fetch("/api/features")
+      const res = await fetch("/api/features", { credentials: "include" })
+      if (!res.ok) throw new Error('Failed to fetch features')
       const data = await res.json()
       setFeatures(data.features || [])
+    } catch (error) {
+      toast({ title: "Error", description: "Could not load features.", variant: "destructive" })
+      setFeatures([])
     } finally {
       setLoading(false)
     }
@@ -115,6 +119,7 @@ export default function FeatureManagementSettings() {
     const feature = features.find(f => f.name === name)
     try {
       const res = await fetch("/api/features", {
+        credentials: "include",
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -138,6 +143,7 @@ export default function FeatureManagementSettings() {
   async function handleUpdate(name: string, description: string, roles: string) {
     setSaving(name)
     await fetch("/api/features", {
+      credentials: "include",
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, description, roles: roles.split(",").map(r => r.trim()) }),

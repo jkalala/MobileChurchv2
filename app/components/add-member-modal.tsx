@@ -77,9 +77,9 @@ export function AddMemberModal({ open, onOpenChange, onSubmit }: AddMemberModalP
   }
 
   return (
-    <DialogShell open={open} onOpenChange={onOpenChange} title="Adicionar Novo Membro" triggerLabel="Adicionar Membro">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+    <DialogShell isOpen={open} onClose={() => onOpenChange(false)} title="Adicionar Novo Membro" size="xl" className="max-w-xl">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="first_name">Primeiro Nome *</label>
             <Input
@@ -102,7 +102,7 @@ export function AddMemberModal({ open, onOpenChange, onSubmit }: AddMemberModalP
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="email">Email</label>
             <Input
@@ -134,7 +134,7 @@ export function AddMemberModal({ open, onOpenChange, onSubmit }: AddMemberModalP
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label>Data de Nascimento</label>
             <Popover>
@@ -187,7 +187,7 @@ export function AddMemberModal({ open, onOpenChange, onSubmit }: AddMemberModalP
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="gender">Gênero</label>
             <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
@@ -219,7 +219,7 @@ export function AddMemberModal({ open, onOpenChange, onSubmit }: AddMemberModalP
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="occupation">Profissão</label>
             <Input
@@ -270,11 +270,11 @@ export function AddMemberModal({ open, onOpenChange, onSubmit }: AddMemberModalP
           />
         </div>
 
-        <div className="flex justify-end space-x-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="flex flex-col md:flex-row gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full md:w-auto">
             Cancelar
           </Button>
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full md:w-auto">
             Adicionar Membro
           </Button>
         </div>

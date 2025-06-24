@@ -5,10 +5,23 @@ import { Button } from "@/components/ui/button"
 import { WifiOff, RefreshCw, Database, Calendar, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useOffline } from "@/hooks/use-offline"
+import { useEffect, useState } from "react"
+import { offlineStorage } from "@/lib/offline-storage"
 
 export default function OfflinePage() {
   const router = useRouter()
-  const { isOnline, isOfflineReady } = useOffline()
+  const { isOnline, isOfflineReady, addPendingSync, getOfflineData } = useOffline()
+  const [members, setMembers] = useState<any[]>([])
+  const [events, setEvents] = useState<any[]>([])
+  const [attendanceNote, setAttendanceNote] = useState("")
+  const [attendanceStatus, setAttendanceStatus] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isOfflineReady) {
+      getOfflineData("members").then(setMembers)
+      getOfflineData("events").then(setEvents)
+    }
+  }, [isOfflineReady])
 
   const handleRetry = () => {
     if (isOnline) {
@@ -16,6 +29,12 @@ export default function OfflinePage() {
     } else {
       window.location.reload()
     }
+  }
+
+  const handleAttendance = async () => {
+    await addPendingSync("attendance", { note: attendanceNote, timestamp: Date.now() })
+    setAttendanceStatus("Recorded for sync when online.")
+    setAttendanceNote("")
   }
 
   const offlineFeatures = [
@@ -69,17 +88,33 @@ export default function OfflinePage() {
               <CardDescription>These features work without an internet connection</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {offlineFeatures.map((feature, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <feature.icon className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-sm">{feature.title}</h4>
-                    <p className="text-xs text-muted-foreground">{feature.description}</p>
-                  </div>
+              <div>
+                <h4 className="font-medium text-sm mb-1">Member Directory</h4>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  {members.length === 0 ? <li>No members cached.</li> : members.map((m) => <li key={m.id}>{m.name || m.email}</li>)}
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm mb-1">Events Calendar</h4>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  {events.length === 0 ? <li>No events cached.</li> : events.map((e) => <li key={e.id}>{e.title || e.name}</li>)}
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm mb-1">Attendance Recording</h4>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={attendanceNote}
+                    onChange={e => setAttendanceNote(e.target.value)}
+                    placeholder="Add note (optional)"
+                    className="border rounded px-2 py-1 text-xs w-full"
+                  />
+                  <Button size="sm" onClick={handleAttendance}>Record</Button>
                 </div>
-              ))}
+                {attendanceStatus && <p className="text-xs text-green-600">{attendanceStatus}</p>}
+                <p className="text-xs text-muted-foreground">Attendance will sync when back online.</p>
+              </div>
             </CardContent>
           </Card>
         )}

@@ -369,9 +369,9 @@ export default function MobileNavigation({ onClose, language }: MobileNavigation
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="h-full min-h-screen max-h-screen flex flex-col bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 overflow-hidden pb-safe">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm pt-safe">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -434,7 +434,7 @@ export default function MobileNavigation({ onClose, language }: MobileNavigation
       </div>
 
       {/* Navigation Items by Category */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 min-h-0 max-h-full">
         {categories.map((category) => {
           const categoryItems = enabledNavigationItems.filter((item) => item.category === category.id)
           if (categoryItems.length === 0) return null
@@ -552,7 +552,7 @@ export default function MobileNavigation({ onClose, language }: MobileNavigation
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm pb-safe">
         <div className="space-y-2">
           <Button
             variant="ghost"
