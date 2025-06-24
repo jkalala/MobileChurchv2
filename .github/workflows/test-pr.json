@@ -1,0 +1,7 @@
+{
+  "title": "🧪 Test PR: Verify CI/CD Pipeline for Angola Edition",
+  "body": "This test PR verifies our GitHub Actions CI/CD pipeline works correctly for the Mobile Church App targeting Angola.\n\n## 🔍 What's Being Tested\n- Code quality (ESLint, TypeScript)\n- Unit tests with Jest\n- Security scanning\n- Staging deployment to Vercel\n- Mobile performance with Lighthouse\n- Portuguese localization\n\n## 🇦🇴 Angola-Specific Features\n- Portuguese as default language\n- Angolan Kwanza (Kz) currency\n- +244 phone format\n- Mobile-first design\n\n## ✅ Expected Results\n- All quality checks pass\n- Staging deployment successful\n- Preview URL generated\n- Mobile performance >90\n- Portuguese text displays correctly\n\nReady for Angola's church communities! 🙏",
+  "head": "test/ci-cd-pipeline",
+  "base": "develop",
+  "draft": false
+}

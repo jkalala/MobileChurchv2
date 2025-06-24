@@ -1,0 +1,29 @@
+{
+  "name": "Connectus - Mobile Church",
+  "short_name": "Connectus",
+  "description": "Complete church management system by Connectus",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/semente-bendita-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/semente-bendita-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "lifestyle"],
+  "lang": "pt-AO",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false
+}

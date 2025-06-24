@@ -1,0 +1,41 @@
+\`\`\`typescript
+// app/components/ai-email-generator.tsx
+import { useAuth } from "@/components/auth-provider";
+
+// app/components/ai-insights-dashboard.tsx
+// Replace any line that reads
+// from "@/app/components/auth-provider" (or `/app/components/auth-provider`)
+// with
+// from "@/components/auth-provider"
+
+// app/components/ai-worship-planner.tsx
+// Same replacement as above.
+
+// app/components/ai-sermon-assistant.tsx
+// Same replacement as above.
+
+// app/components/ai-music-ministry-tools.tsx
+// Same replacement as above.
+
+// app/components/pastoral-care-dashboard.tsx
+// Same replacement as above.
+
+// app/components/outreach-crm-dashboard.tsx
+// Same replacement as above.
+
+// app/components/user-profile-settings.tsx
+// Same replacement as above.
+
+// app/components/feature-management-settings.tsx
+// Same replacement as above.
+
+// app/components/mobile-header.tsx
+// Same replacement as above.
+
+// app/components/language-selector.tsx
+// Same replacement as above.
+
+// Any remaining file inside `app/components/**` or elsewhere that still contains
+// the string `"/app/components/auth-provider"` or `"@/app/components/auth-provider"`
+// should be updated to `@/components/auth-provider`.
+\`\`\`

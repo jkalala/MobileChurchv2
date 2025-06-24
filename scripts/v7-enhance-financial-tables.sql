@@ -1,0 +1,212 @@
+-- Enhanced Financial Management Tables
+-- This script adds comprehensive financial tracking capabilities
+
+-- Create enhanced financial_transactions table if it doesn't exist
+CREATE TABLE IF NOT EXISTS financial_transactions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    member_id UUID REFERENCES members(id) ON DELETE SET NULL,
+    ministry_id UUID REFERENCES ministries(id) ON DELETE SET NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    transaction_type VARCHAR(50) NOT NULL CHECK (transaction_type IN ('tithe', 'offering', 'donation', 'expense', 'transfer')),
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'cash' CHECK (payment_method IN ('cash', 'mpesa', 'bank_transfer', 'card', 'mobile_money', 'check')),
+    transaction_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    description TEXT,
+    category VARCHAR(100),
+    reference_number VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'failed', 'cancelled')),
+    receipt_url TEXT,
+    notes TEXT,
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create budgets table
+CREATE TABLE IF NOT EXISTS budgets (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    total_amount DECIMAL(12,2) NOT NULL,
+    spent_amount DECIMAL(12,2) DEFAULT 0,
+    period VARCHAR(20) NOT NULL CHECK (period IN ('monthly', 'quarterly', 'yearly')),
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('draft', 'active', 'completed', 'paused', 'cancelled')),
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create budget_categories table
+CREATE TABLE IF NOT EXISTS budget_categories (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    budget_id UUID REFERENCES budgets(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    allocated_amount DECIMAL(12,2) NOT NULL,
+    spent_amount DECIMAL(12,2) DEFAULT 0,
+    ministry_id UUID REFERENCES ministries(id) ON DELETE SET NULL,
+    color VARCHAR(7) DEFAULT '#8884d8',
+    icon VARCHAR(50) DEFAULT 'folder',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create expenses table for detailed expense tracking
+CREATE TABLE IF NOT EXISTS expenses (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    budget_id UUID REFERENCES budgets(id) ON DELETE SET NULL,
+    category_id UUID REFERENCES budget_categories(id) ON DELETE SET NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    description TEXT NOT NULL,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'cash',
+    receipt_url TEXT,
+    vendor VARCHAR(255),
+    approved_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'paid')),
+    notes TEXT,
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create financial_goals table
+CREATE TABLE IF NOT EXISTS financial_goals (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    target_amount DECIMAL(12,2) NOT NULL,
+    current_amount DECIMAL(12,2) DEFAULT 0,
+    target_date DATE,
+    category VARCHAR(100),
+    priority VARCHAR(20) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'paused', 'cancelled')),
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create ministries table if it doesn't exist
+CREATE TABLE IF NOT EXISTS ministries (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    leader_id UUID REFERENCES members(id) ON DELETE SET NULL,
+    budget_allocated DECIMAL(12,2) DEFAULT 0,
+    budget_spent DECIMAL(12,2) DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_financial_transactions_date ON financial_transactions(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_financial_transactions_type ON financial_transactions(transaction_type);
+CREATE INDEX IF NOT EXISTS idx_financial_transactions_member ON financial_transactions(member_id);
+CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(period, status);
+CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
+CREATE INDEX IF NOT EXISTS idx_expenses_status ON expenses(status);
+
+-- Create triggers for updating timestamps
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Apply triggers to all tables
+DROP TRIGGER IF EXISTS update_financial_transactions_updated_at ON financial_transactions;
+CREATE TRIGGER update_financial_transactions_updated_at 
+    BEFORE UPDATE ON financial_transactions 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_budgets_updated_at ON budgets;
+CREATE TRIGGER update_budgets_updated_at 
+    BEFORE UPDATE ON budgets 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_budget_categories_updated_at ON budget_categories;
+CREATE TRIGGER update_budget_categories_updated_at 
+    BEFORE UPDATE ON budget_categories 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_expenses_updated_at ON expenses;
+CREATE TRIGGER update_expenses_updated_at 
+    BEFORE UPDATE ON expenses 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Insert sample ministries if they don't exist
+INSERT INTO ministries (name, description, budget_allocated) VALUES
+('Ministério de Louvor', 'Responsável pela música e adoração nos cultos', 25000),
+('Ministério de Jovens', 'Ministério voltado para jovens e adolescentes', 20000),
+('Ministério Infantil', 'Cuidado e ensino das crianças', 15000),
+('Evangelismo', 'Atividades de evangelização e missões', 30000),
+('Manutenção', 'Manutenção e infraestrutura da igreja', 30000)
+ON CONFLICT DO NOTHING;
+
+-- Insert sample financial data
+INSERT INTO financial_transactions (amount, transaction_type, payment_method, description, transaction_date) VALUES
+(150.00, 'tithe', 'mpesa', 'Dízimo mensal', CURRENT_DATE - INTERVAL '1 day'),
+(75.00, 'offering', 'cash', 'Oferta dominical', CURRENT_DATE - INTERVAL '2 days'),
+(200.00, 'donation', 'bank_transfer', 'Doação especial', CURRENT_DATE - INTERVAL '3 days'),
+(500.00, 'expense', 'card', 'Equipamento de som', CURRENT_DATE - INTERVAL '5 days'),
+(100.00, 'tithe', 'cash', 'Dízimo semanal', CURRENT_DATE - INTERVAL '7 days')
+ON CONFLICT DO NOTHING;
+
+-- Create sample budget
+INSERT INTO budgets (name, description, total_amount, period, start_date, end_date) VALUES
+('Orçamento 2024', 'Orçamento anual da igreja', 120000, 'yearly', '2024-01-01', '2024-12-31')
+ON CONFLICT DO NOTHING;
+
+-- Get the budget ID for categories
+DO $$
+DECLARE
+    budget_uuid UUID;
+BEGIN
+    SELECT id INTO budget_uuid FROM budgets WHERE name = 'Orçamento 2024' LIMIT 1;
+    
+    IF budget_uuid IS NOT NULL THEN
+        INSERT INTO budget_categories (budget_id, name, allocated_amount, color, icon) VALUES
+        (budget_uuid, 'Ministério de Louvor', 25000, '#8884d8', 'music'),
+        (budget_uuid, 'Ministério de Jovens', 20000, '#82ca9d', 'users'),
+        (budget_uuid, 'Ministério Infantil', 15000, '#ffc658', 'baby'),
+        (budget_uuid, 'Evangelismo', 30000, '#ff7300', 'megaphone'),
+        (budget_uuid, 'Manutenção', 30000, '#00ff00', 'wrench')
+        ON CONFLICT DO NOTHING;
+    END IF;
+END $$;
+
+-- Enable RLS on all tables
+ALTER TABLE financial_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE budget_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE financial_goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ministries ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies
+CREATE POLICY "Users can view all financial transactions" ON financial_transactions FOR SELECT USING (true);
+CREATE POLICY "Users can insert financial transactions" ON financial_transactions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update financial transactions" ON financial_transactions FOR UPDATE USING (true);
+
+CREATE POLICY "Users can view all budgets" ON budgets FOR SELECT USING (true);
+CREATE POLICY "Users can insert budgets" ON budgets FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update budgets" ON budgets FOR UPDATE USING (true);
+
+CREATE POLICY "Users can view all budget categories" ON budget_categories FOR SELECT USING (true);
+CREATE POLICY "Users can insert budget categories" ON budget_categories FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update budget categories" ON budget_categories FOR UPDATE USING (true);
+
+CREATE POLICY "Users can view all expenses" ON expenses FOR SELECT USING (true);
+CREATE POLICY "Users can insert expenses" ON expenses FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update expenses" ON expenses FOR UPDATE USING (true);
+
+CREATE POLICY "Users can view all financial goals" ON financial_goals FOR SELECT USING (true);
+CREATE POLICY "Users can insert financial goals" ON financial_goals FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update financial goals" ON financial_goals FOR UPDATE USING (true);
+
+CREATE POLICY "Users can view all ministries" ON ministries FOR SELECT USING (true);
+CREATE POLICY "Users can insert ministries" ON ministries FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update ministries" ON ministries FOR UPDATE USING (true);
