@@ -139,25 +139,24 @@ export class FeatureManager {
     if (this.initialized) return
 
     // Load from localStorage or use defaults
-    const savedFeatures = localStorage.getItem("church-app-features")
     let features = DEFAULT_FEATURES
-
-    if (savedFeatures) {
-      try {
-        const saved = JSON.parse(savedFeatures)
-        features = DEFAULT_FEATURES.map((defaultFeature) => {
-          const savedFeature = saved.find((f: Feature) => f.id === defaultFeature.id)
-          return savedFeature ? { ...defaultFeature, enabled: savedFeature.enabled } : defaultFeature
-        })
-      } catch (error) {
-        console.error("Error loading saved features:", error)
+    if (typeof window !== "undefined") {
+      const savedFeatures = localStorage.getItem("church-app-features")
+      if (savedFeatures) {
+        try {
+          const saved = JSON.parse(savedFeatures)
+          features = DEFAULT_FEATURES.map((defaultFeature) => {
+            const savedFeature = saved.find((f: Feature) => f.id === defaultFeature.id)
+            return savedFeature ? { ...defaultFeature, enabled: savedFeature.enabled } : defaultFeature
+          })
+        } catch (error) {
+          console.error("Error loading saved features:", error)
+        }
       }
     }
-
     features.forEach((feature: Feature) => {
       this.features.set(feature.id, feature)
     })
-
     this.initialized = true
   }
 
@@ -274,5 +273,3 @@ export function useFeature(featureId: string): boolean {
   FeatureManager.initialize()
   return FeatureManager.isEnabled(featureId)
 }
-
-export type { FeatureCategory }
